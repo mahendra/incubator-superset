@@ -268,7 +268,7 @@ WARNING_MSG = None
 # Example:
 class CeleryConfig(object):
   BROKER_URL = 'sqla+sqlite:///celerydb.sqlite'
-  CELERY_IMPORTS = ('superset.sql_lab', )
+  CELERY_IMPORTS = ('superset.sql_lab', 'superset.tasks',)
   CELERY_RESULT_BACKEND = 'db+sqlite:///celery_results.sqlite'
   CELERY_ANNOTATIONS = {'tasks.add': {'rate_limit': '10/s'}}
   CELERYD_LOG_LEVEL = 'DEBUG'
@@ -424,6 +424,27 @@ CAN_FALLBACK_TO_DASH_V1_EDIT_MODE = True
 # these are incorporated into messages displayed to users
 PLANNED_V2_AUTO_CONVERT_DATE = None  # e.g. '2018-06-16'
 V2_FEEDBACK_URL = None  # e.g., 'https://goo.gl/forms/...'
+
+# Email report configuration
+# From address in emails
+EMAIL_REPORT_FROM_ADDRESS = 'reports@superset.org'
+
+# Send bcc of all reports to this address. Set to None to disable.
+# This is useful for maintaining an audit trail of all email deliveries.
+EMAIL_REPORT_BCC_ADDRESS = None
+
+# User credentials to use for generating reports
+EMAIL_REPORTS_CREDENTIALS = {
+    'username': 'reports',
+    'password': 'password',
+}
+
+# PhantomJS configuration for rendering email reports
+# Path of the executable
+PHANTOMJS_PATH = 'phantomjs'
+
+# Window size - this will impact the rendering of the data
+PHANTOMJS_WINDOW = (1024, 768)
 
 try:
     if CONFIG_PATH_ENV_VAR in os.environ:

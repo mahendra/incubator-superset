@@ -583,7 +583,7 @@ def notify_user_about_perm_udate(
                     dryrun=not config.get('EMAIL_NOTIFICATIONS'))
 
 
-def send_email_smtp(to, subject, html_content, config, files=None,
+def send_email_smtp(to, subject, html_content, config, files=None, data=None,
                     dryrun=False, cc=None, bcc=None, mime_subtype='mixed'):
     """
     Send an email with html content, eg:
@@ -622,6 +622,13 @@ def send_email_smtp(to, subject, html_content, config, files=None,
                     Content_Disposition="attachment; filename='%s'" % basename,
                     Name=basename))
 
+    for name, body in (data or {}).items():
+        msg.attach(
+            MIMEApplication(
+                body,
+                Content_Disposition="attachment; filename='%s'" % name,
+                Name=basename))
+
     send_MIME_email(smtp_mail_from, recipients, msg, config, dryrun=dryrun)
 
 
@@ -652,11 +659,13 @@ def get_email_address_list(address_string):
     if isinstance(address_string, basestring):
         if ',' in address_string:
             address_string = address_string.split(',')
+        elif '\n' in address_string:
+            address_string = address_string.split('\n')
         elif ';' in address_string:
             address_string = address_string.split(';')
         else:
             address_string = [address_string]
-    return address_string
+    return [x.strip() for x in address_string]
 
 
 def choicify(values):
