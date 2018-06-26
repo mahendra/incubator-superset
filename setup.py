@@ -95,7 +95,7 @@ setup(
         'thrift-sasl>=0.2.1',
         'unicodecsv',
         'unidecode>=0.04.21',
-        'croniter==0.3.20',
+        'croniter==0.3.24',
         'selenium==3.12.0',
     ],
     extras_require={

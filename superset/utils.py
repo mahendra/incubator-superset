@@ -12,7 +12,10 @@ import decimal
 from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.mime.image import MIMEImage
 from email.utils import formatdate
+from functools import wraps
+from time import sleep
 import errno
 import functools
 import json
@@ -583,21 +586,23 @@ def notify_user_about_perm_udate(
                     dryrun=not config.get('EMAIL_NOTIFICATIONS'))
 
 
-def send_email_smtp(to, subject, html_content, config, files=None, data=None,
-                    dryrun=False, cc=None, bcc=None, mime_subtype='mixed'):
+def send_email_smtp(to, subject, html_content, config,
+                    files=None, data=None, images=None, dryrun=False,
+                    cc=None, bcc=None, mime_subtype='mixed'):
     """
     Send an email with html content, eg:
     send_email_smtp(
         'test@example.com', 'foo', '<b>Foo</b> bar',['/dev/null'], dryrun=True)
     """
     smtp_mail_from = config.get('SMTP_MAIL_FROM')
-
     to = get_email_address_list(to)
 
     msg = MIMEMultipart(mime_subtype)
     msg['Subject'] = subject
     msg['From'] = smtp_mail_from
     msg['To'] = ', '.join(to)
+    msg.preamble = 'This is a multi-part message in MIME format.'
+
     recipients = to
     if cc:
         cc = get_email_address_list(cc)
@@ -613,6 +618,7 @@ def send_email_smtp(to, subject, html_content, config, files=None, data=None,
     mime_text = MIMEText(html_content, 'html')
     msg.attach(mime_text)
 
+    # Attach files by reading them from disk
     for fname in files or []:
         basename = os.path.basename(fname)
         with open(fname, 'rb') as f:
@@ -622,12 +628,22 @@ def send_email_smtp(to, subject, html_content, config, files=None, data=None,
                     Content_Disposition="attachment; filename='%s'" % basename,
                     Name=basename))
 
+    # Attach any files passed directly
     for name, body in (data or {}).items():
         msg.attach(
             MIMEApplication(
                 body,
                 Content_Disposition="attachment; filename='%s'" % name,
-                Name=basename))
+                Name=name)
+        )
+
+    # Attach any inline images, which may be required for display in
+    # HTML content (inline)
+    for msgid, body in (images or {}).items():
+        image = MIMEImage(body)
+        image.add_header('Content-ID', '<%s>' % msgid)
+        image.add_header('Content-Disposition', 'inline')
+        msg.attach(image)
 
     send_MIME_email(smtp_mail_from, recipients, msg, config, dryrun=dryrun)
 
@@ -647,7 +663,7 @@ def send_MIME_email(e_from, e_to, mime_msg, config, dryrun=False):
             s.starttls()
         if SMTP_USER and SMTP_PASSWORD:
             s.login(SMTP_USER, SMTP_PASSWORD)
-        logging.info('Sent an alert email to ' + str(e_to))
+        logging.info('Sent an email to ' + str(e_to))
         s.sendmail(e_from, e_to, mime_msg.as_string())
         s.quit()
     else:
@@ -894,3 +910,32 @@ def split_adhoc_filters_into_base_filters(fd):
         fd['having'] = ' AND '.join(['({})'.format(sql) for sql in sql_having_filters])
         fd['having_filters'] = simple_having_filters
         fd['filters'] = simple_where_filters
+
+
+def retry(exceptions, tries=4, delay=3, backoff=2):
+    """
+    Retry calling the decorated function using an exponential backoff.
+
+    Args:
+        exceptions: The exception to check. may be a tuple of
+            exceptions to check.
+        tries: Number of times to try (not retry) before giving up.
+        delay: Initial delay between retries in seconds.
+        backoff: Backoff multiplier (e.g. value of 2 will double the delay
+            each retry).
+    """
+    def _retry(f):
+        @wraps(f)
+        def f_retry(*args, **kwargs):
+            mtries, mdelay = tries, delay
+            while mtries > 1:
+                try:
+                    return f(*args, **kwargs)
+                except exceptions as e:
+                    sleep(mdelay)
+                    mtries -= 1
+                    mdelay *= backoff
+            return f(*args, **kwargs)
+
+        return f_retry  # true decorator
+    return _retry

@@ -434,17 +434,33 @@ EMAIL_REPORT_FROM_ADDRESS = 'reports@superset.org'
 EMAIL_REPORT_BCC_ADDRESS = None
 
 # User credentials to use for generating reports
-EMAIL_REPORTS_CREDENTIALS = {
-    'username': 'reports',
-    'password': 'password',
-}
+# This user should have permissions to browse all the dashboards and
+# slices.
+# TODO: In the future, login as the owner of the item to generate reports
+EMAIL_REPORTS_USER = 'admin'
+EMAIL_REPORTS_SUBJECT_PREFIX = '[Report] '
 
-# PhantomJS configuration for rendering email reports
-# Path of the executable
-PHANTOMJS_PATH = 'phantomjs'
+# The webdriver to use for generating reports. Use one of the following
+# firefox
+#   Requires: geckodriver and firefox installations
+#   Limitations: can be buggy at times
+# chrome:
+#   Requires: headless chrome
+#   Limitations: unable to generate screenshots of elements
+EMAIL_REPORTS_WEBDRIVER = 'firefox'
 
 # Window size - this will impact the rendering of the data
-PHANTOMJS_WINDOW = (1024, 768)
+WEBDRIVER_WINDOW = {
+    'dashboard': (1600, 2000),
+    'slice': (3000, 1200),
+}
+
+# Any config options to be passed as-is to the webdriver
+WEBDRIVER_CONFIGURATION = {}
+
+# The base URL to query for accessing the user interface
+WEBDRIVER_BASEURL = 'http://0.0.0.0:8088/'
+
 
 try:
     if CONFIG_PATH_ENV_VAR in os.environ:

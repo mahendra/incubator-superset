@@ -1125,6 +1125,7 @@ class Superset(BaseSupersetView):
     @expose('/slice_json/<slice_id>')
     def slice_json(self, slice_id):
         try:
+            csv = request.args.get('csv') == 'true'
             form_data, slc = self.get_form_data(slice_id)
             datasource_type = slc.datasource.type
             datasource_id = slc.datasource.id
@@ -1135,7 +1136,8 @@ class Superset(BaseSupersetView):
                 stacktrace=traceback.format_exc())
         return self.generate_json(datasource_type=datasource_type,
                                   datasource_id=datasource_id,
-                                  form_data=form_data)
+                                  form_data=form_data,
+                                  csv=csv)
 
     @log_this
     @has_access_api
